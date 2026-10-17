@@ -1,0 +1,40 @@
+name: Check
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            shell: dash
+          - os: ubuntu-24.04
+            shell: bash
+          - os: macos-15
+            shell: sh
+    runs-on: ${{ matrix.os }}
+    env:
+      HORODATER_TEST_SHELL: ${{ matrix.shell }}
+      SOURCE_DATE_EPOCH: '0'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Tests and distribution checks
+        run: make check
+      - name: ShellCheck
+        if: runner.os == 'Linux' && matrix.shell == 'dash'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          make lint
+      - name: Build release archive
+        run: make dist
